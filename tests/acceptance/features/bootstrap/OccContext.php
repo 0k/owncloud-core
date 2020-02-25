@@ -1223,6 +1223,29 @@ class OccContext implements Context {
 	}
 
 	/**
+	 * @When the administrator configures for the key :key with value :value for the local storage mount :localStorage
+	 *
+	 * @param string $key
+	 * @param string $value
+	 * @param string $localStorage
+	 *
+	 * @return void
+	 * @throws Exception
+	 */
+	public function adminConfiguresLocalStorageMountUsingTheOccCommand($key, $value, $localStorage) {
+		$mountId = $this->featureContext->getStorageId($localStorage);
+		$this->featureContext->runOcc(
+			[
+				"files_external:config",
+				$mountId,
+				$key,
+				$value
+			]
+		);
+		$this->theCommandShouldHaveBeenSuccessful();
+	}
+
+	/**
 	 * @When the administrator lists the local storage using the occ command
 	 *
 	 * @return void
@@ -1391,6 +1414,31 @@ class OccContext implements Context {
 				}
 			}
 			Assert::assertTrue($isStorageEntryListed, "Expected local storage {$expectedStorageEntry['MountPoint']} not found");
+		}
+	}
+
+	/**
+	 * @Then the following should be included in the configuration of local storage :localStorage:
+	 *
+	 * @param string $localStorage
+	 * @param TableNode $table
+	 *
+	 * @return void
+	 * @throws Exception
+	 */
+	public function theFollowingShouldBeIncludedInTheConfigurationOfLocalStorage($localStorage, TableNode $table) {
+		$expectedConfigurations = $table->getColumnsHash();
+		$commandOutput = \json_decode($this->featureContext->getStdOutOfOccCommand());
+		foreach ($commandOutput as $listedStorageEntry) {
+			if ($listedStorageEntry->mount_point === $localStorage) {
+				$configurations = $listedStorageEntry->configuration;
+				$configurationsSplitted = \explode(', ', $configurations);
+				foreach ($expectedConfigurations as $expectedConfigArray) {
+					foreach ($expectedConfigArray as $expectedConfigEntry) {
+						Assert::assertContains($expectedConfigEntry, $configurationsSplitted);
+					}
+				}
+			}
 		}
 	}
 
