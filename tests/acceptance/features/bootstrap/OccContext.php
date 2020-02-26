@@ -1242,6 +1242,29 @@ class OccContext implements Context {
 	}
 
 	/**
+	 * @When the administrator adds an option with key :key and value :vlaue for the local storage mount :localStorage
+	 *
+	 * @param string $key
+	 * @param string $value
+	 * @param string $localStorage
+	 *
+	 * @return void
+	 * @throws Exception
+	 */
+	public function adminAddsOptionForLocalStorageMountUsingTheOccCommand($key, $value, $localStorage) {
+		$mountId = $this->featureContext->getStorageId($localStorage);
+		$this->featureContext->runOcc(
+			[
+				"files_external:option",
+				$mountId,
+				$key,
+				$value
+			]
+		);
+		$this->theCommandShouldHaveBeenSuccessful();
+	}
+
+	/**
 	 * @When the administrator lists the local storage using the occ command
 	 *
 	 * @return void
@@ -1410,6 +1433,70 @@ class OccContext implements Context {
 				}
 			}
 			Assert::assertTrue($isStorageEntryListed, "Expected local storage {$expectedStorageEntry['MountPoint']} not found");
+		}
+	}
+
+	/**
+	 * @Then the following should be included in the options of local storage :localStorage:
+	 *
+	 * @param string $localStorage
+	 * @param TableNode $table
+	 *
+	 * @return void
+	 * @throws Exception
+	 */
+	public function theFollowingShouldBeIncludedInTheOptionsOfLocalStorage($localStorage, TableNode $table) {
+		$expectedOptions = $table->getColumnsHash();
+		$commandOutput = \json_decode($this->featureContext->getStdOutOfOccCommand());
+		foreach ($commandOutput as $listedStorageEntry) {
+			if ($listedStorageEntry->mount_point === $localStorage) {
+				$options = $listedStorageEntry->options;
+				$optionsSplitted = \explode(', ', $options);
+				foreach ($expectedOptions as $expectedOptionArray) {
+					foreach ($expectedOptionArray as $expectedOptionEntry) {
+						Assert::assertContains(
+							$expectedOptionEntry,
+							$optionsSplitted,
+							__METHOD__
+							. " $expectedOptionEntry is not contained in '"
+							. \implode(', ', $optionsSplitted)
+							. "' , but was expected to be."
+						);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * @Then the following should not be included in the options of local storage :localStorage:
+	 *
+	 * @param string $localStorage
+	 * @param TableNode $table
+	 *
+	 * @return void
+	 * @throws Exception
+	 */
+	public function theFollowingShouldNotBeIncludedInTheOptionsOfLocalStorage($localStorage, TableNode $table) {
+		$expectedOptions = $table->getColumnsHash();
+		$commandOutput = \json_decode($this->featureContext->getStdOutOfOccCommand());
+		foreach ($commandOutput as $listedStorageEntry) {
+			if ($listedStorageEntry->mount_point === $localStorage) {
+				$options = $listedStorageEntry->options;
+				$optionsSplitted = \explode(', ', $options);
+				foreach ($expectedOptions as $expectedOptionArray) {
+					foreach ($expectedOptionArray as $expectedOptionEntry) {
+						Assert::assertNotContains(
+							$expectedOptionEntry,
+							$optionsSplitted,
+							__METHOD__
+							. " $expectedOptionEntry is contained in '"
+							. \implode(', ', $optionsSplitted)
+							. "' , but was not expected to be."
+						);
+					}
+				}
+			}
 		}
 	}
 
